@@ -16,8 +16,35 @@ bool cmp(std::vector<cv::Point> x1, std::vector<cv::Point> x2)
 struct Apple
 {
     int x1, y1, x2, y2;
-    double xc,yc;
+    double xc, yc;
 };
+struct Line
+{
+    double A, B, C;
+    void getLine(const cv::Point &x, const cv::Point &y)
+    {
+        if (x.x == y.x)
+        {
+            A = 1;
+            B = 0;
+            C = -x.x;
+            return;
+        }
+        else
+        {
+            double k = ((double)(y.y - x.y)) / ((double)(y.x - x.x));
+            double b = ((double)x.y) - k * ((double)x.x);
+            A = k;
+            B = -1;
+            C = b;
+            return;
+        }
+    }
+    double side(const cv::Point &x)
+    {
+        return (A * x.x + B * x.y + C);
+    }
+}; //Ax+by+C=0
 Apple get_contour(const std::vector<std::vector<cv::Point>> &contours)
 {
     Apple apple;
@@ -73,14 +100,15 @@ Apple get_contour_second(const std::vector<std::vector<cv::Point>> &contours)
     apple.y1 = 10000;
     apple.x2 = -1;
     apple.y2 = -1;
-    int tempy1,tempy2,tempx1,tempx2;
+    int tempy1, tempy2, tempx1, tempx2;
     for (auto it = c.begin(); it != c.end(); it++)
     {
         apple.x1 = std::min(apple.x1, (*it).x);
         apple.y1 = std::min(apple.y1, (*it).y);
         apple.x2 = std::max(apple.x2, (*it).x);
         apple.y2 = std::max(apple.y2, (*it).y);
-        if (apple.x1==(*it).x) tempy1=(*it).y;
+        if (apple.x1 == (*it).x)
+            tempy1 = (*it).y;
         //if (apple.x2==(*it).x) tempy2=(*it).y;
         //if (apple.y1==(*it).y) tempx1=(*it).x;
         //if (apple.y2==(*it).y) tempx2=(*it).x;
@@ -92,13 +120,13 @@ Apple get_contour_second(const std::vector<std::vector<cv::Point>> &contours)
     //std::cout<<tempx1<<std::endl;
 
     //std::cout<<tempx2<<std::endl;
-    apple.yc=tempy1;
+    apple.yc = tempy1;
     //apple.xc=((double)(tempx1+tempx2) )/ 2;
     //apple.yc=((double)(tempy1+tempy2) )/ 2;
     //double al=apple.xc-apple.x1;
     //double ar=(double)apple.x2-apple.xc;
-    double bt=apple.yc-apple.y1;
-    double bb=(double)apple.y2-apple.yc;
+    double bt = apple.yc - apple.y1;
+    double bb = (double)apple.y2 - apple.yc;
     //std::cout<<al<<std::endl;
     //    std::cout<<ar<<std::endl;
     //std::cout<<bt<<std::endl;
@@ -106,8 +134,8 @@ Apple get_contour_second(const std::vector<std::vector<cv::Point>> &contours)
 
     //apple.x1=apple.xc-(std::max(al,ar));
     //apple.x2=apple.xc+(std::max(al,ar));
-    apple.y1=apple.yc-(std::max(bt,bb));
-    apple.y2=apple.yc+(std::max(bt,bb));
+    apple.y1 = apple.yc - (std::max(bt, bb));
+    apple.y2 = apple.yc + (std::max(bt, bb));
     return apple;
 }
 void drawOrigin(const std::vector<std::vector<cv::Point>> &contours, cv::Mat &src)
@@ -163,7 +191,7 @@ void apple()
 
     cv::morphologyEx(hsv_result, hsv_result, cv::MORPH_OPEN, element);
     cv::morphologyEx(hsv_result, hsv_result, cv::MORPH_CLOSE, element);
-    
+
     std::vector<std::vector<cv::Point>> contour;
     std::vector<cv::Vec4i> hierachy;
 
@@ -196,7 +224,7 @@ void apple_second()
 
     cv::morphologyEx(hsv_result, hsv_result, cv::MORPH_OPEN, element);
     cv::morphologyEx(hsv_result, hsv_result, cv::MORPH_CLOSE, element);
-    
+
     std::vector<std::vector<cv::Point>> contour;
     std::vector<cv::Vec4i> hierachy;
 
@@ -244,11 +272,64 @@ void dfs(cv::Mat &drawer, const std::vector<std::vector<cv::Point>> &contours, c
 }
 float getDistance(const cv::Point &x, const cv::Point &y)
 {
-    return abs(x.x - y.x) * abs(x.x - y.x) + abs(x.y - y.y) * abs(x.y - y.y);
+    return sqrt(abs(x.x - y.x) * abs(x.x - y.x) + abs(x.y - y.y) * abs(x.y - y.y));
+}
+std::vector<cv::Point> getFourPoints(const std::vector<std::vector<cv::Point>> &contour, const std::pair<cv::Point, int> &far)
+{
+    std::vector<cv::Point> ans;
+    std::vector<cv::Point> tempV;
+    for (auto it = contour[far.second].begin(); it != contour[far.second].end(); it++)
+    {
+        ans.push_back(*it);
+        //std::cout<<(*it);
+    }
+    sort(ans.begin(), ans.end(), [&](const cv::Point &x1, const cv::Point &x2)
+         { return getDistance(x1, far.first) > getDistance(x2, far.first); });
+    tempV.push_back(ans[0]);
+    auto far1 = ans[0];
+    sort(ans.begin(), ans.end(), [&](const cv::Point &x1, const cv::Point &x2)
+         { return getDistance(x1, far1) > getDistance(x2, far1); });
+    tempV.push_back(ans[0]);
+    auto far2 = ans[0];
+    sort(ans.begin(), ans.end(), [&](const cv::Point &x1, const cv::Point &x2)
+         { return ((getDistance(x1, far2)) + getDistance(x1, far1)) > ((getDistance(x2, far2)) + getDistance(x2, far1)); });
+    tempV.push_back(ans[0]);
+    auto far3 = ans[0];
+    for (auto it = ans.begin(); it != ans.end(); it++)
+    {
+        auto tempAns = *it;
+
+        if (((tempAns.x - far.first.x) * (far3.x - far.first.x) < 0) && ((tempAns.y - far.first.y) * (far3.y - far.first.y) < 0))
+        {
+            tempV.push_back(tempAns);
+            break;
+        }
+    }
+    return tempV;
 }
 std::vector<cv::Point> getFivePoints(const cv::Point &center, const std::vector<std::vector<cv::Point>> &contour, const std::vector<cv::Vec4i> &hierachy, const int &temp)
 {
+    std::vector<std::pair<cv::Point, int>> nans;
     std::vector<cv::Point> ans;
+
+    //求最远轮廓中心,存入far
+    for (int i = hierachy[temp][2]; i + 1; i = hierachy[i][0])
+    {
+        cv::Point ncenter;
+        cv::Moments moment;
+        moment = moments(contour[i]);
+        ncenter.x = moment.m10 / moment.m00;
+        ncenter.y = moment.m01 / moment.m00;
+        nans.push_back(std::make_pair(ncenter, i));
+    }
+    sort(nans.begin(), nans.end(), [&](const std::pair<cv::Point, int> &x1, const std::pair<cv::Point, int> &x2)
+         { return getDistance(x1.first, center) > getDistance(x2.first, center); });
+    auto far = nans[0];
+
+    //求最近点
+    Line line;
+    line.getLine(center, far.first);
+
     for (int i = hierachy[temp][2]; i + 1; i = hierachy[i][0])
     {
         for (auto it = contour[i].begin(); it != contour[i].end(); it++)
@@ -257,15 +338,74 @@ std::vector<cv::Point> getFivePoints(const cv::Point &center, const std::vector<
         }
     }
     sort(ans.begin(), ans.end(), [&](const cv::Point &x1, const cv::Point &x2)
-         { return getDistance(x1, center) > getDistance(x2, center); });
+         { return getDistance(x1, center) < getDistance(x2, center); });
     //std::cout<<getDistance(ans[0],center)<<" "<<getDistance(ans[1],center)<<std::endl;
-    std::vector<cv::Point> tempV;
+    auto tempAns1 = ans[0];
+    auto tempAns2 = ans[0];
+    for (auto it = ans.begin(); it != ans.end(); it++)
+    {
+        if (line.side(tempAns1) * line.side(*it) < 0)
+        {
+            tempAns2 = (*it);
+            break;
+        }
+    }
+    tempAns1.x = (tempAns1.x + tempAns2.x) / 2;
+    tempAns1.y = (tempAns1.y + tempAns2.y) / 2;
+
+    std::vector<cv::Point> tempV = getFourPoints(contour, far);
+
+    tempV.push_back(tempAns1);
+    for (auto it = tempV.begin(); it != tempV.end(); it++)
+    {
+        std::cout << *it << std::endl;
+    }
+    std::cout << std::endl;
+    std::vector<cv::Point> fans;
+    cv::convexHull(tempV, fans);
+    return fans;
+}
+std::vector<cv::Point> easyGetFivePoints (const cv::Point &center, const std::vector<std::vector<cv::Point>> &contour, const std::vector<cv::Vec4i> &hierachy, const int &temp)
+{
+    std::vector<std::pair<cv::Point, int>> nans;
+    std::vector<cv::Point> ans;
+
+    //求最远轮廓中心,存入far
+    for (int i = hierachy[temp][2]; i + 1; i = hierachy[i][0])
+    {
+        cv::Point ncenter;
+        cv::Moments moment;
+        moment = moments(contour[i]);
+        ncenter.x = moment.m10 / moment.m00;
+        ncenter.y = moment.m01 / moment.m00;
+        nans.push_back(std::make_pair(ncenter, i));
+    }
+    sort(nans.begin(), nans.end(), [&](const std::pair<cv::Point, int> &x1, const std::pair<cv::Point, int> &x2)
+         { return getDistance(x1.first, center) > getDistance(x2.first, center); });
+    auto far = nans[0];
+
+
+
+        for (auto it = contour[temp].begin(); it != contour[temp].end(); it++)
+        {
+            ans.push_back(*it);
+        }
+    
+    sort(ans.begin(), ans.end(), [&](const cv::Point &x1, const cv::Point &x2)
+         { return getDistance(x1, center) < getDistance(x2, center); });
+    //std::cout<<getDistance(ans[0],center)<<" "<<getDistance(ans[1],center)<<std::endl;
+
+    std::vector<cv::Point> tempV = getFourPoints(contour, far);
+
     tempV.push_back(ans[0]);
-    tempV.push_back(ans[1]);
-    tempV.push_back(ans[2]);
-    tempV.push_back(ans[3]);
-    tempV.push_back(ans[ans.size() - 1]);
-    return tempV;
+    for (auto it = tempV.begin(); it != tempV.end(); it++)
+    {
+        std::cout << *it << std::endl;
+    }
+    std::cout << std::endl;
+    std::vector<cv::Point> fans;
+    cv::convexHull(tempV, fans);
+    return fans;
 }
 void second(cv::VideoCapture &capture)
 {
@@ -297,7 +437,7 @@ void second(cv::VideoCapture &capture)
         std::vector<std::vector<cv::Point>> contour;
         std::vector<cv::Vec4i> hierachy;
         //!!!注意findContours 会提取边缘，不能用Canny的结果，不然会有2层。
-        cv::findContours(hsv_result, contour, hierachy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+        cv::findContours(hsv_result, contour, hierachy, cv::RETR_TREE, cv::CHAIN_APPROX_NONE);
         //calculate(contour, hierachy, inside);
         cv::Mat drawer = cv::Mat::zeros(cv::Size(src.cols, src.rows), CV_8UC3);
         inside.resize(contour.size(), 0);
@@ -312,8 +452,8 @@ void second(cv::VideoCapture &capture)
             try
             {
                 in = inside.at(i);
-                if (inside.at(i) == 1)
-                    cv::drawContours(drawer, contour, i, {220, 20, 20}, 1);
+                //if (inside.at(i) == 1)
+                //    cv::drawContours(src, contour, i, {220, 20, 20}, 1);
 
                 if (inside.at(i) == 0)
                 {
@@ -324,12 +464,13 @@ void second(cv::VideoCapture &capture)
                             moment = moments(contour[i]);
                             center.x = moment.m10 / moment.m00;
                             center.y = moment.m01 / moment.m00;
-                            cv::drawContours(drawer, contour, i, {255, 255, 255}, 1);
+                            cv::drawContours(src, contour, i, {255, 255, 255}, 1);
                         }
                     }
+                    //cv::drawContours(drawer, contour, i, {255, 255, 255}, 1);
                 }
-                if (inside.at(i) == 3)
-                    cv::drawContours(drawer, contour, i, {20, 20, 220}, 1);
+                //if (inside.at(i) == 3)
+                //    cv::drawContours(drawer, contour, i, {20, 20, 220}, 1);
 
                 //if (inside.at(i)>=1) std::cout<<inside.at(i)<<" in "<<i<<"of"<<cv::contourArea(contour[i])<<std::endl;
             }
@@ -348,18 +489,19 @@ void second(cv::VideoCapture &capture)
             std::vector<cv::Point> points = getFivePoints(center, contour, hierachy, temp);
             std::vector<std::vector<cv::Point>> tempV;
             tempV.push_back(points);
-            cv::drawContours(drawer, tempV, 0, {0, 255, 0}, 1);
+            cv::drawContours(src, tempV, 0, {0, 255, 0}, 1);
         }
+
         for (int i = 0; i < empty.size(); i++)
         {
             int temp = empty.at(i);
-            std::vector<cv::Point> points = getFivePoints(center, contour, hierachy, temp);
+            std::vector<cv::Point> points = easyGetFivePoints(center, contour, hierachy, temp);
             std::vector<std::vector<cv::Point>> tempV;
             tempV.push_back(points);
-            cv::drawContours(drawer, tempV, 0, {255, 0, 0}, 1);
+            cv::drawContours(src, tempV, 0, {255, 0, 0}, 1);
         }
         std::cout << full.size() << " " << empty.size() << std::endl;
-        cv::imshow("apple", drawer);
+        cv::imshow("apple", src);
         cv::waitKey(50);
     }
     return;
@@ -380,7 +522,7 @@ int main()
         cv::VideoCapture capture("video2.mp4");
         second(capture);
     }
-    if (x==4)
+    if (x == 4)
     {
         apple_second();
     }
