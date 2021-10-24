@@ -115,6 +115,9 @@ int main()
     }
     if (x == 2)
     {
+            vector<double> ans;
+    ans.clear();
+
         const int board_w = 9,
                   board_h = 6;
         const int board_n = board_w * board_h;
@@ -159,6 +162,7 @@ int main()
                 find4QuadCornerSubpix(src0, point_pix_pos_buf, Size(5, 5));
                 drawn_img = src0.clone();
                 drawChessboardCorners(drawn_img, board_size, point_pix_pos_buf, found);
+                cout<<point_pix_pos_buf<<endl;
                 cv::Mat show;
                 cv::resize(drawn_img, show, Size(960, 540));
                 imshow("corners", show);
@@ -170,9 +174,9 @@ int main()
             std::cout << successes << " useful chess boards" << std::endl;
             Size square_size(10, 10);
             std::vector<Point3f> point_grid_pos_buf;
-            Mat camera_matrix = cv::Mat_<int>(3, 3) << (9.1234465679824348e+02, 0., 6.4157634413436961e+02, 0.,
+            Mat camera_matrix = cv::Mat_<double>(3, 3) << (9.1234465679824348e+02, 0., 6.4157634413436961e+02, 0.,
                                                         7.6573154962089018e+02, 3.6477945186797331e+02, 0., 0., 1.);
-            Mat dist_coeffs = cv::Mat_<int>(1, 5) << (0., -4.2669718747763807e-01, 2.6509688616309912e-01,
+            Mat dist_coeffs = cv::Mat_<double>(1, 5) << (0., -4.2669718747763807e-01, 2.6509688616309912e-01,
                                                       -5.3624979910268683e-04, -4.1011485564833132e-04);
             Mat rvecs;
             Mat tvecs;
@@ -188,13 +192,22 @@ int main()
                     point_grid_pos_buf.push_back(pt);
                 }
             }
+            cout<<point_grid_pos_buf<<endl;
+
             solvePnP(point_grid_pos_buf, point_pix_pos_buf, camera_matrix, dist_coeffs, rvecs, tvecs);
             point_pix_pos_buf.clear();
             point_grid_pos_buf.clear();
-            cout << rvecs << endl;
+            cout << tvecs << endl;
+            ans.push_back(sqrt(tvecs.at<double>(0,0)*tvecs.at<double>(0,0)+tvecs.at<double>(1,0)*tvecs.at<double>(1,0)+tvecs.at<double>(2,0)*tvecs.at<double>(2,0)));
                         }
             else
                 std::cout << "failed in" << i << std::endl;
+
+        }
+        sort(ans.begin(),ans.end());
+        for (auto it=ans.begin();it!=ans.end();it++)
+        {
+                    cout<<(*it)<<endl;
 
         }
     }
